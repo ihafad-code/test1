@@ -1,1 +1,1125 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <base target="_top">
+  <title>ระบบขออนุญาตออกนอกโรงเรียน - โรงเรียนท่ายางวิทยา</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts: Prompt -->
+  <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- QRCode.js -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <!-- HTML5 QR Code Scanner -->
+  <script src="https://unpkg.com/html5-qrcode"></script>
+  <!-- SweetAlert2 -->
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
+  <style>
+    body {
+      font-family: 'Prompt', sans-serif;
+      background-color: #f0f6ff;
+      color: #1e293b;
+      padding-bottom: 84px;
+    }
+    .blue-gradient {
+      background: linear-gradient(135deg, #1e3a8a 0%, #1d4ed8 55%, #2563eb 100%);
+    }
+    .card-shadow {
+      box-shadow: 0 4px 20px -2px rgba(30, 58, 138, 0.08);
+    }
+    .tab-active {
+      color: #1d4ed8;
+      border-top: 3px solid #1d4ed8;
+      background-color: #eff6ff;
+    }
+    #qr-reader video {
+      border-radius: 0.75rem;
+      object-fit: cover;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+  <!-- Top Header -->
+  <header class="blue-gradient text-white shadow-lg sticky top-0 z-40">
+    <div class="max-w-5xl mx-auto px-4 py-3.5 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-xl bg-white/15 backdrop-blur flex items-center justify-center border border-white/25 font-bold text-lg">
+          ทย
+        </div>
+        <div>
+          <h1 class="text-base sm:text-lg font-bold leading-tight">โรงเรียนท่ายางวิทยา</h1>
+          <p class="text-xs text-blue-100">ระบบขออนุญาตออกนอกโรงเรียนออนไลน์</p>
+        </div>
+      </div>
+      <div class="text-right">
+        <div id="live-clock" class="text-sm sm:text-base font-semibold tracking-wider bg-blue-950/40 px-2.5 py-1 rounded-lg border border-blue-400/30">
+          --:--:--
+        </div>
+        <div id="live-date" class="text-[11px] text-blue-100 mt-0.5">เวลาประเทศไทย</div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content Container -->
+  <main class="flex-1 max-w-5xl w-full mx-auto px-4 pt-5">
+
+    <!-- ==================== 1. หน้าแดชบอร์ด ==================== -->
+    <section id="view-dashboard" class="space-y-5">
+      <div class="flex items-center justify-between">
+        <div>
+          <h2 class="text-lg sm:text-xl font-bold text-blue-950">แดชบอร์ดสรุปการขออนุญาต</h2>
+          <p class="text-xs text-slate-500">สถิติการขออนุญาตออกนอกโรงเรียนแบบเรียลไทม์</p>
+        </div>
+        <button onclick="loadData()" class="bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm px-3.5 py-2 rounded-xl shadow flex items-center gap-1.5 transition">
+          <span>รีเฟรช</span>
+        </button>
+      </div>
+
+      <!-- Summary Cards (รายวัน / รายสัปดาห์ / รายเดือน) -->
+      <div class="grid grid-cols-3 gap-2.5 sm:gap-4">
+        <div class="bg-white rounded-2xl p-3.5 sm:p-5 card-shadow border border-blue-100 relative overflow-hidden">
+          <div class="w-2 h-full bg-blue-500 absolute left-0 top-0"></div>
+          <p class="text-xs sm:text-sm text-slate-500 font-medium">วันนี้</p>
+          <p id="stat-today" class="text-2xl sm:text-4xl font-bold text-blue-700 mt-1">0</p>
+          <p class="text-[11px] text-blue-500 mt-1">รายการ</p>
+        </div>
+
+        <div class="bg-white rounded-2xl p-3.5 sm:p-5 card-shadow border border-blue-100 relative overflow-hidden">
+          <div class="w-2 h-full bg-blue-700 absolute left-0 top-0"></div>
+          <p class="text-xs sm:text-sm text-slate-500 font-medium">รายสัปดาห์</p>
+          <p id="stat-week" class="text-2xl sm:text-4xl font-bold text-blue-800 mt-1">0</p>
+          <p class="text-[11px] text-blue-600 mt-1">รายการ</p>
+        </div>
+
+        <div class="bg-white rounded-2xl p-3.5 sm:p-5 card-shadow border border-blue-100 relative overflow-hidden">
+          <div class="w-2 h-full bg-blue-950 absolute left-0 top-0"></div>
+          <p class="text-xs sm:text-sm text-slate-500 font-medium">รายเดือน</p>
+          <p id="stat-month" class="text-2xl sm:text-4xl font-bold text-blue-950 mt-1">0</p>
+          <p class="text-[11px] text-blue-800 mt-1">รายการ</p>
+        </div>
+      </div>
+
+      <!-- Charts Grid -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="bg-white rounded-2xl p-4 sm:p-5 card-shadow border border-blue-100">
+          <h3 class="text-sm sm:text-base font-bold text-blue-900 mb-3">สถิติการขออนุญาต 7 วันล่าสุด</h3>
+          <div class="h-60">
+            <canvas id="dailyChart"></canvas>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-2xl p-4 sm:p-5 card-shadow border border-blue-100">
+          <h3 class="text-sm sm:text-base font-bold text-blue-900 mb-3">สัดส่วนประเภทการขออนุญาต</h3>
+          <div class="h-60">
+            <canvas id="categoryChart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- รายการเคลื่อนไหวล่าสุด -->
+      <div class="bg-white rounded-2xl p-4 sm:p-5 card-shadow border border-blue-100">
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="text-sm sm:text-base font-bold text-blue-900">รายการขออนุญาตล่าสุด</h3>
+          <span id="stat-pending-badge" class="text-xs bg-amber-100 text-amber-800 px-2.5 py-1 rounded-full font-medium">รออนุมัติ 0</span>
+        </div>
+        <div id="dashboard-recent-list" class="divide-y divide-slate-100 text-sm">
+          <p class="text-center text-slate-400 py-6">กำลังโหลดข้อมูล...</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== 2. หน้ายื่นคำขอ & เช็ค QR Code (ต้อง Login ก่อน) ==================== -->
+    <section id="view-request" class="hidden space-y-4">
+
+      <!-- Teacher Login Box -->
+      <div id="teacher-login-box" class="max-w-md mx-auto bg-white rounded-2xl p-6 card-shadow border border-blue-100 mt-4">
+        <div class="text-center mb-5">
+          <div class="w-14 h-14 blue-gradient text-white rounded-2xl flex items-center justify-center mx-auto mb-3 text-xl font-bold shadow">
+            ครู
+          </div>
+          <h2 class="text-lg font-bold text-blue-950">เข้าสู่ระบบสำหรับครูและบุคลากร</h2>
+          <p class="text-xs text-slate-500">กรุณาเข้าสู่ระบบด้วย Username และ Password เพื่อกรอกฟอร์มขออนุญาต</p>
+        </div>
+        <form onsubmit="handleLogin(event, 'teacher')" class="space-y-3.5">
+          <div>
+            <label class="block text-xs font-semibold text-blue-950 mb-1">ชื่อผู้ใช้ (Username)</label>
+            <input type="text" id="teacherUser" required placeholder="กรอก Username ของคุณ"
+              class="w-full px-3.5 py-2.5 rounded-xl border border-blue-200 text-sm outline-none focus:ring-2 focus:ring-blue-500">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-blue-950 mb-1">รหัสผ่าน (Password)</label>
+            <input type="password" id="teacherPass" required placeholder="กรอก Password ของคุณ"
+              class="w-full px-3.5 py-2.5 rounded-xl border border-blue-200 text-sm outline-none focus:ring-2 focus:ring-blue-500">
+          </div>
+          <button type="submit" id="btnTeacherLogin" class="w-full blue-gradient text-white font-semibold py-3 rounded-xl shadow text-sm">
+            เข้าสู่ระบบขออนุญาต
+          </button>
+        </form>
+      </div>
+
+      <!-- Teacher Authenticated Panel -->
+      <div id="teacher-panel" class="hidden space-y-4">
+        <!-- แถบแสดงผู้ใช้งานปัจจุบัน + ปุ่มออกจากระบบ -->
+        <div class="bg-white rounded-2xl px-4 py-3 card-shadow border border-blue-100 flex items-center justify-between gap-2">
+          <div class="text-xs sm:text-sm">
+            <span class="text-slate-500">ผู้ใช้งาน:</span>
+            <b id="logged-teacher-display" class="text-blue-900 ml-1">-</b>
+          </div>
+          <button onclick="logoutRole('teacher')" class="text-xs bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 px-3 py-1.5 rounded-xl font-medium transition">
+            ออกจากระบบ
+          </button>
+        </div>
+
+        <!-- Sub-navigation -->
+        <div class="grid grid-cols-2 bg-white p-1.5 rounded-2xl card-shadow border border-blue-100">
+          <button id="btn-sub-form" onclick="switchRequestSubTab('form')" class="py-2.5 text-xs sm:text-sm font-semibold rounded-xl bg-blue-600 text-white transition">
+            กรอกฟอร์มขออนุญาต
+          </button>
+          <button id="btn-sub-status" onclick="switchRequestSubTab('status')" class="py-2.5 text-xs sm:text-sm font-semibold rounded-xl text-slate-600 hover:text-blue-700 transition">
+            ตรวจสอบสถานะ / รับ QR Code
+          </button>
+        </div>
+
+        <!-- Sub-tab 1: ฟอร์มขออนุญาต -->
+        <div id="subtab-form" class="bg-white rounded-2xl p-5 sm:p-6 card-shadow border border-blue-100">
+          <div class="border-b border-blue-100 pb-3 mb-4 flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <h2 class="text-lg font-bold text-blue-950">แบบฟอร์มขออนุญาตออกนอกโรงเรียน</h2>
+              <p class="text-xs text-slate-500">ดึงข้อมูลส่วนตัวอัตโนมัติจากระบบ (เวลาประเทศไทย 24 ชั่วโมง)</p>
+            </div>
+            <span class="text-[11px] bg-blue-50 text-blue-700 border border-blue-200 px-2.5 py-1 rounded-lg font-medium">
+              ดึงข้อมูลอัตโนมัติแล้ว
+            </span>
+          </div>
+
+          <form id="permissionForm" onsubmit="handleFormSubmit(event)" class="space-y-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-xs font-semibold text-blue-950 mb-1">ชื่อ - นามสกุล ครู/บุคลากร *</label>
+                <input type="text" id="teacherName" required placeholder="เช่น นายสมชาย ใจดี"
+                  class="w-full px-3.5 py-2.5 rounded-xl border border-blue-200 bg-blue-50/30 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm">
+              </div>
+
+              <div>
+                <label class="block text-xs font-semibold text-blue-950 mb-1">ตำแหน่ง / กลุ่มสาระการเรียนรู้ *</label>
+                <select id="department" required
+                  class="w-full px-3.5 py-2.5 rounded-xl border border-blue-200 bg-blue-50/30 focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none text-sm">
+                  <option value="">-- เลือกกลุ่มสาระฯ / ฝ่าย --</option>
+                  <option value="กลุ่มสาระฯ ภาษาไทย">กลุ่มสาระฯ ภาษาไทย</option>
+                  <option value="กลุ่มสาระฯ คณิตศาสตร์">กลุ่มสาระฯ คณิตศาสตร์</option>
+                  <option value="กลุ่มสาระฯ วิทยาศาสตร์และเทคโนโลยี">กลุ่มสาระฯ วิทยาศาสตร์และเทคโนโลยี</option>
+                  <option value="กลุ่มสาระฯ สังคมศึกษา ศาสนา และวัฒนธรรม">กลุ่มสาระฯ สังคมศึกษา ศาสนา และวัฒนธรรม</option>
+                  <option value="กลุ่มสาระฯ สุขศึกษาและพลศึกษา">กลุ่มสาระฯ สุขศึกษาและพลศึกษา</option>
+                  <option value="กลุ่มสาระฯ ศิลปะ">กลุ่มสาระฯ ศิลปะ</option>
+                  <option value="กลุ่มสาระฯ การงานอาชีพ">กลุ่มสาระฯ การงานอาชีพ</option>
+                  <option value="กลุ่มสาระฯ ภาษาต่างประเทศ">กลุ่มสาระฯ ภาษาต่างประเทศ</option>
+                  <option value="กิจกรรมพัฒนาผู้เรียน / แนะแนว">กิจกรรมพัฒนาผู้เรียน / แนะแนว</option>
+                  <option value="ฝ่ายบริหาร / สำนักงาน / บุคลากรสนับสนุน">ฝ่ายบริหาร / สำนักงาน / บุคลากรสนับสนุน</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-xs font-semibold text-blue-950 mb-1">เบอร์โทรศัพท์ติดต่อ *</label>
+                <input type="tel" id="phone" required placeholder="08X-XXX-XXXX"
+                  class="w-full px-3.5 py-2.5 rounded-xl border border-blue-200 bg-blue-50/30 focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none text-sm">
+              </div>
+
+              <div>
+                <label class="block text-xs font-semibold text-blue-950 mb-1">ประเภทการขออนุญาต *</label>
+                <select id="category" required
+                  class="w-full px-3.5 py-2.5 rounded-xl border border-blue-200 focus:ring-2 focus:ring-blue-500 outline-none text-sm bg-white">
+                  <option value="ไปราชการ">ไปราชการ</option>
+                  <option value="ธุระส่วนตัว">ธุระส่วนตัว</option>
+                  <option value="พบแพทย์/โรงพยาบาล">พบแพทย์/โรงพยาบาล</option>
+                  <option value="อื่นๆ">อื่นๆ</option>
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-xs font-semibold text-blue-950 mb-1">สถานที่ที่ไปติดต่อ / ปฏิบัติภารกิจ *</label>
+              <input type="text" id="destination" required placeholder="เช่น สำนักงานเขตพื้นที่การศึกษา, โรงพยาบาลท่ายาง"
+                class="w-full px-3.5 py-2.5 rounded-xl border border-blue-200 focus:ring-2 focus:ring-blue-500 outline-none text-sm">
+            </div>
+
+            <div>
+              <label class="block text-xs font-semibold text-blue-950 mb-1">เหตุผลและความจำเป็นในการขออนุญาต *</label>
+              <textarea id="reason" rows="2" required placeholder="ระบุรายละเอียดเหตุผลการขออนุญาตออกนอกโรงเรียน"
+                class="w-full px-3.5 py-2.5 rounded-xl border border-blue-200 focus:ring-2 focus:ring-blue-500 outline-none text-sm"></textarea>
+            </div>
+
+            <!-- วันและเวลาแบบ 24 ชั่วโมง -->
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 bg-blue-50/70 p-3.5 rounded-xl border border-blue-100">
+              <div>
+                <label class="block text-xs font-semibold text-blue-950 mb-1">วันที่ขออนุญาต *</label>
+                <input type="date" id="requestDate" required
+                  class="w-full px-3 py-2 rounded-xl border border-blue-200 bg-white text-sm outline-none focus:ring-2 focus:ring-blue-500">
+              </div>
+
+              <div>
+                <label class="block text-xs font-semibold text-blue-950 mb-1">เวลาที่ขอออก (24 ชม.) *</label>
+                <div class="flex items-center space-x-1.5">
+                  <select id="outHour" class="w-1/2 px-2.5 py-2 rounded-xl border border-blue-200 bg-white text-sm text-center font-medium"></select>
+                  <span class="font-bold text-blue-900">:</span>
+                  <select id="outMin" class="w-1/2 px-2.5 py-2 rounded-xl border border-blue-200 bg-white text-sm text-center font-medium"></select>
+                </div>
+              </div>
+
+              <div>
+                <label class="block text-xs font-semibold text-blue-950 mb-1">เวลาที่คาดว่าจะกลับ (24 ชม.) *</label>
+                <div class="flex items-center space-x-1.5">
+                  <select id="inHour" class="w-1/2 px-2.5 py-2 rounded-xl border border-blue-200 bg-white text-sm text-center font-medium"></select>
+                  <span class="font-bold text-blue-900">:</span>
+                  <select id="inMin" class="w-1/2 px-2.5 py-2 rounded-xl border border-blue-200 bg-white text-sm text-center font-medium"></select>
+                </div>
+              </div>
+            </div>
+
+            <button type="submit" id="btnSubmitForm"
+              class="w-full blue-gradient hover:opacity-95 text-white font-semibold py-3.5 rounded-xl shadow-md transition text-sm sm:text-base">
+              ส่งคำขออนุญาตออกนอกโรงเรียน
+            </button>
+          </form>
+        </div>
+
+        <!-- Sub-tab 2: ตรวจสอบสถานะและรับ QR Code -->
+        <div id="subtab-status" class="hidden bg-white rounded-2xl p-5 card-shadow border border-blue-100 space-y-4">
+          <div>
+            <h2 class="text-lg font-bold text-blue-950">ตรวจสอบสถานะและรับ QR Code</h2>
+            <p class="text-xs text-slate-500">เมื่อผู้บริหารอนุมัติแล้ว กดปุ่ม "แสดง QR Code" เพื่อนำไปสแกนกับเวรยามหน้าประตู</p>
+          </div>
+
+          <input type="text" id="teacherSearchInput" onkeyup="renderTeacherStatusList()"
+            placeholder="ค้นหาชื่อครู หรือ รหัสคำขอ (เช่น TYW-...)"
+            class="w-full px-4 py-2.5 rounded-xl border border-blue-200 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+
+          <div id="teacher-status-list" class="space-y-3"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== 3. หน้าผู้บริหาร (Admin) ==================== -->
+    <section id="view-admin" class="hidden space-y-4">
+      <div id="admin-login-box" class="max-w-md mx-auto bg-white rounded-2xl p-6 card-shadow border border-blue-100 mt-4">
+        <div class="text-center mb-5">
+          <div class="w-14 h-14 blue-gradient text-white rounded-2xl flex items-center justify-center mx-auto mb-3 text-xl font-bold shadow">
+            ผบ.
+          </div>
+          <h2 class="text-lg font-bold text-blue-950">เข้าสู่ระบบผู้บริหาร / แอดมิน</h2>
+          <p class="text-xs text-slate-500">สำหรับพิจารณาอนุมัติการขออนุญาตออกนอกโรงเรียน</p>
+        </div>
+        <form onsubmit="handleLogin(event, 'admin')" class="space-y-3.5">
+          <div>
+            <label class="block text-xs font-semibold text-blue-950 mb-1">ชื่อผู้ใช้ (Username)</label>
+            <input type="text" id="adminUser" required placeholder="กรอกชื่อผู้ใช้"
+              class="w-full px-3.5 py-2.5 rounded-xl border border-blue-200 text-sm outline-none focus:ring-2 focus:ring-blue-500">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-blue-950 mb-1">รหัสผ่าน (Password)</label>
+            <input type="password" id="adminPass" required placeholder="กรอกรหัสผ่าน"
+              class="w-full px-3.5 py-2.5 rounded-xl border border-blue-200 text-sm outline-none focus:ring-2 focus:ring-blue-500">
+          </div>
+          <button type="submit" id="btnAdminLogin" class="w-full blue-gradient text-white font-semibold py-3 rounded-xl shadow text-sm">
+            เข้าสู่ระบบผู้บริหาร
+          </button>
+        </form>
+      </div>
+
+      <div id="admin-panel" class="hidden space-y-4">
+        <div class="bg-white rounded-2xl p-4 card-shadow border border-blue-100 flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h2 class="text-base sm:text-lg font-bold text-blue-950">ระบบอนุมัติคำขอ (ผู้บริหาร)</h2>
+            <p class="text-xs text-slate-500">อนุมัติคำขอเพื่อสร้าง QR Code ผ่านประตูให้แก่ครู</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <select id="adminFilterStatus" onchange="renderAdminList()" class="text-xs border border-blue-200 rounded-xl px-3 py-2 bg-blue-50 text-blue-900 font-medium">
+              <option value="รออนุมัติ">รออนุมัติเท่านั้น</option>
+              <option value="อนุมัติแล้ว">อนุมัติแล้ว</option>
+              <option value="ทั้งหมด">แสดงทั้งหมด</option>
+            </select>
+            <button onclick="logoutRole('admin')" class="text-xs bg-red-50 text-red-600 border border-red-200 px-3 py-2 rounded-xl font-medium">
+              ออกจากระบบ
+            </button>
+          </div>
+        </div>
+
+        <div id="admin-request-list" class="space-y-3"></div>
+      </div>
+    </section>
+
+    <!-- ==================== 4. หน้าเวรยามหน้าประตู (Guard QR Scanner) ==================== -->
+    <section id="view-guard" class="hidden space-y-4">
+      <div id="guard-login-box" class="max-w-md mx-auto bg-white rounded-2xl p-6 card-shadow border border-blue-100 mt-4">
+        <div class="text-center mb-5">
+          <div class="w-14 h-14 blue-gradient text-white rounded-2xl flex items-center justify-center mx-auto mb-3 text-xl font-bold shadow">
+            รปภ.
+          </div>
+          <h2 class="text-lg font-bold text-blue-950">เข้าสู่ระบบเวรยามหน้าประตู</h2>
+          <p class="text-xs text-slate-500">สำหรับสแกน QR Code บันทึกเวลาเข้า-ออกของครู</p>
+        </div>
+        <form onsubmit="handleLogin(event, 'guard')" class="space-y-3.5">
+          <div>
+            <label class="block text-xs font-semibold text-blue-950 mb-1">ชื่อผู้ใช้ (Username)</label>
+            <input type="text" id="guardUser" required placeholder="กรอกชื่อผู้ใช้"
+              class="w-full px-3.5 py-2.5 rounded-xl border border-blue-200 text-sm outline-none focus:ring-2 focus:ring-blue-500">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-blue-950 mb-1">รหัสผ่าน (Password)</label>
+            <input type="password" id="guardPass" required placeholder="กรอกรหัสผ่าน"
+              class="w-full px-3.5 py-2.5 rounded-xl border border-blue-200 text-sm outline-none focus:ring-2 focus:ring-blue-500">
+          </div>
+          <button type="submit" id="btnGuardLogin" class="w-full blue-gradient text-white font-semibold py-3 rounded-xl shadow text-sm">
+            เข้าสู่ระบบเวรยาม
+          </button>
+        </form>
+      </div>
+
+      <div id="guard-panel" class="hidden space-y-4">
+        <div class="bg-white rounded-2xl p-4 card-shadow border border-blue-100 flex items-center justify-between">
+          <div>
+            <h2 class="text-base sm:text-lg font-bold text-blue-950">จุดสแกน QR Code เวรยามหน้าประตู</h2>
+            <p class="text-xs text-slate-500">สแกนครั้งที่ 1 = เวลาออก | สแกนครั้งที่ 2 = เวลากลับ</p>
+          </div>
+          <button onclick="logoutRole('guard')" class="text-xs bg-red-50 text-red-600 border border-red-200 px-3 py-2 rounded-xl font-medium">
+            ออกจากระบบ
+          </button>
+        </div>
+
+        <div class="bg-white rounded-2xl p-4 sm:p-5 card-shadow border border-blue-100 space-y-4">
+          <div class="flex flex-wrap gap-2">
+            <button id="btnStartCam" onclick="startCameraScanner()"
+              class="flex-1 blue-gradient text-white text-sm font-semibold py-3 px-4 rounded-xl shadow">
+              เปิดกล้องสแกน QR Code
+            </button>
+            <button id="btnStopCam" onclick="stopCameraScanner()"
+              class="hidden bg-slate-200 text-slate-700 text-sm font-semibold py-3 px-4 rounded-xl">
+              ปิดกล้อง
+            </button>
+          </div>
+
+          <div id="qr-reader" class="w-full max-w-sm mx-auto overflow-hidden rounded-xl border-2 border-dashed border-blue-200 bg-slate-50"></div>
+
+          <div class="pt-2 border-t border-slate-100 space-y-2.5">
+            <label class="block text-xs text-slate-500 font-medium">กรณีเบราว์เซอร์บล็อกกล้องสด สามารถถ่ายภาพ QR หรือกรอกรหัสคำขอ:</label>
+            <div class="flex flex-col sm:flex-row gap-2">
+              <label class="cursor-pointer bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 text-xs font-semibold px-3.5 py-2.5 rounded-xl text-center">
+                ถ่ายภาพสแกน QR
+                <input type="file" accept="image/*" capture="environment" onchange="scanQrFromFile(event)" class="hidden">
+              </label>
+              <div class="flex-1 flex gap-2">
+                <input type="text" id="manualQrCode" placeholder="กรอกรหัสเช่น TYW-261113-001"
+                  class="flex-1 px-3 py-2 rounded-xl border border-blue-200 text-xs outline-none">
+                <button onclick="submitManualQr()" class="bg-blue-700 text-white text-xs font-semibold px-4 py-2 rounded-xl">
+                  บันทึก
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div id="guard-scan-result" class="hidden bg-white rounded-2xl p-5 card-shadow border-2 border-blue-500 space-y-2"></div>
+
+        <div class="bg-white rounded-2xl p-4 card-shadow border border-blue-100">
+          <h3 class="text-sm font-bold text-blue-950 mb-3">บันทึกเวลาเข้า-ออกของครูวันนี้</h3>
+          <div id="guard-today-logs" class="divide-y divide-slate-100 text-xs sm:text-sm"></div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Bottom Navigation Bar -->
+  <nav class="fixed bottom-0 inset-x-0 bg-white border-t border-blue-100 shadow-lg z-40">
+    <div class="max-w-5xl mx-auto grid grid-cols-4 text-center">
+      <button onclick="switchMainTab('dashboard')" id="nav-dashboard" class="tab-active py-2.5 flex flex-col items-center justify-center transition">
+        <span class="text-xs sm:text-sm font-bold">แดชบอร์ด</span>
+        <span class="text-[10px] text-slate-400">สรุปสถิติ</span>
+      </button>
+      <button onclick="switchMainTab('request')" id="nav-request" class="py-2.5 flex flex-col items-center justify-center text-slate-500 hover:text-blue-700 transition">
+        <span class="text-xs sm:text-sm font-bold">ขออนุญาต</span>
+        <span class="text-[10px] text-slate-400">ฟอร์ม / QR</span>
+      </button>
+      <button onclick="switchMainTab('admin')" id="nav-admin" class="py-2.5 flex flex-col items-center justify-center text-slate-500 hover:text-blue-700 transition">
+        <span class="text-xs sm:text-sm font-bold">ผู้บริหาร</span>
+        <span class="text-[10px] text-slate-400">อนุมัติคำขอ</span>
+      </button>
+      <button onclick="switchMainTab('guard')" id="nav-guard" class="py-2.5 flex flex-col items-center justify-center text-slate-500 hover:text-blue-700 transition">
+        <span class="text-xs sm:text-sm font-bold">เวรยาม</span>
+        <span class="text-[10px] text-slate-400">สแกน QR</span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- Modal แสดง QR Code -->
+  <div id="qrModal" class="hidden fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-sm w-full p-6 text-center space-y-4 shadow-2xl border border-blue-100">
+      <div class="blue-gradient text-white py-2.5 px-4 rounded-2xl">
+        <h3 class="font-bold text-base">บัตรผ่านออกนอกโรงเรียน</h3>
+        <p class="text-xs text-blue-100">โรงเรียนท่ายางวิทยา (อนุมัติแล้ว)</p>
+      </div>
+      <div id="qrcodeCanvas" class="flex justify-center p-3 bg-white rounded-2xl border-2 border-blue-200 mx-auto w-fit"></div>
+      <div id="qrModalDetails" class="text-xs text-slate-600 space-y-1 bg-blue-50 p-3 rounded-xl text-left"></div>
+      <p class="text-[11px] text-blue-700 font-medium">แสดง QR Code นี้แก่เวรยามหน้าประตูขณะออกและกลับ</p>
+      <button onclick="closeQrModal()" class="w-full bg-slate-800 text-white py-2.5 rounded-xl text-sm font-semibold">
+        ปิดหน้าต่าง
+      </button>
+    </div>
+  </div>
+
+  <script>
+    let globalData = { summary: {}, charts: {}, requests: [], todayStr: '' };
+    let dailyChartInstance = null;
+    let categoryChartInstance = null;
+    let html5QrCode = null;
+    let isScanning = false;
+
+    document.addEventListener('DOMContentLoaded', () => {
+      startThaiClock();
+      initTimeSelectors();
+      checkSavedSessions();
+      loadData();
+    });
+
+    // นาฬิกาเวลาประเทศไทยแบบ 24 ชั่วโมง
+    function startThaiClock() {
+      const updateClock = () => {
+        const now = new Date();
+        const timeStr = now.toLocaleTimeString('th-TH', {
+          timeZone: 'Asia/Bangkok',
+          hour12: false,
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit'
+        });
+        const dateStr = now.toLocaleDateString('th-TH', {
+          timeZone: 'Asia/Bangkok',
+          day: '2-digit',
+          month: 'short',
+          year: 'numeric'
+        });
+        document.getElementById('live-clock').textContent = timeStr + ' น.';
+        document.getElementById('live-date').textContent = dateStr;
+      };
+      updateClock();
+      setInterval(updateClock, 1000);
+    }
+
+    // สร้างตัวเลือกเวลา 24 ชั่วโมง (00-23 : 00-59) และตั้งค่าวันที่ปัจจุบัน
+    function initTimeSelectors() {
+      const outHour = document.getElementById('outHour');
+      const outMin = document.getElementById('outMin');
+      const inHour = document.getElementById('inHour');
+      const inMin = document.getElementById('inMin');
+
+      outHour.innerHTML = '';
+      outMin.innerHTML = '';
+      inHour.innerHTML = '';
+      inMin.innerHTML = '';
+
+      for (let h = 0; h < 24; h++) {
+        const val = String(h).padStart(2, '0');
+        outHour.innerHTML += `<option value="${val}" ${h === 13 ? 'selected' : ''}>${val}</option>`;
+        inHour.innerHTML += `<option value="${val}" ${h === 15 ? 'selected' : ''}>${val}</option>`;
+      }
+      for (let m = 0; m < 60; m += 5) {
+        const val = String(m).padStart(2, '0');
+        outMin.innerHTML += `<option value="${val}">${val}</option>`;
+        inMin.innerHTML += `<option value="${val}">${val}</option>`;
+      }
+
+      const thaiToday = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Bangkok' });
+      document.getElementById('requestDate').value = thaiToday;
+    }
+
+    // สลับเมนูหลักด้านล่าง
+    function switchMainTab(tab) {
+      if (tab !== 'guard' && isScanning) {
+        stopCameraScanner();
+      }
+      ['dashboard', 'request', 'admin', 'guard'].forEach(t => {
+        document.getElementById(`view-${t}`).classList.add('hidden');
+        document.getElementById(`nav-${t}`).classList.remove('tab-active');
+        document.getElementById(`nav-${t}`).classList.add('text-slate-500');
+      });
+      document.getElementById(`view-${tab}`).classList.remove('hidden');
+      document.getElementById(`nav-${tab}`).classList.add('tab-active');
+      document.getElementById(`nav-${tab}`).classList.remove('text-slate-500');
+    }
+
+    // สลับแท็บย่อยในหน้าขออนุญาต
+    function switchRequestSubTab(sub) {
+      const isForm = sub === 'form';
+      document.getElementById('subtab-form').classList.toggle('hidden', !isForm);
+      document.getElementById('subtab-status').classList.toggle('hidden', isForm);
+
+      document.getElementById('btn-sub-form').className = isForm
+        ? 'py-2.5 text-xs sm:text-sm font-semibold rounded-xl bg-blue-600 text-white transition'
+        : 'py-2.5 text-xs sm:text-sm font-semibold rounded-xl text-slate-600 hover:text-blue-700 transition';
+
+      document.getElementById('btn-sub-status').className = !isForm
+        ? 'py-2.5 text-xs sm:text-sm font-semibold rounded-xl bg-blue-600 text-white transition'
+        : 'py-2.5 text-xs sm:text-sm font-semibold rounded-xl text-slate-600 hover:text-blue-700 transition';
+
+      if (!isForm) renderTeacherStatusList();
+    }
+
+    // โหลดข้อมูลทั้งหมดจาก Google Sheets
+    function loadData() {
+      google.script.run
+        .withSuccessHandler(res => {
+          globalData = res;
+          updateDashboardUI();
+          renderTeacherStatusList();
+          renderAdminList();
+          renderGuardLogs();
+        })
+        .withFailureHandler(err => {
+          console.error(err);
+        })
+        .getDashboardData();
+    }
+
+    // อัปเดตหน้าแดชบอร์ดและกราฟสีน้ำเงิน
+    function updateDashboardUI() {
+      const s = globalData.summary;
+      document.getElementById('stat-today').textContent = s.today || 0;
+      document.getElementById('stat-week').textContent = s.week || 0;
+      document.getElementById('stat-month').textContent = s.month || 0;
+      document.getElementById('stat-pending-badge').textContent = `รออนุมัติ ${s.pending || 0}`;
+
+      const ctxDaily = document.getElementById('dailyChart').getContext('2d');
+      if (dailyChartInstance) dailyChartInstance.destroy();
+      dailyChartInstance = new Chart(ctxDaily, {
+        type: 'bar',
+        data: {
+          labels: globalData.charts.dailyLabels,
+          datasets: [{
+            label: 'จำนวนการขออนุญาต (ครั้ง)',
+            data: globalData.charts.dailyData,
+            backgroundColor: [
+              '#93c5fd', '#60a5fa', '#3b82f6', '#2563eb', '#1d4ed8', '#1e40af', '#1e3a8a'
+            ],
+            borderRadius: 8,
+            maxBarThickness: 36
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            y: { beginAtZero: true, ticks: { stepSize: 1, precision: 0 } },
+            x: { grid: { display: false } }
+          }
+        }
+      });
+
+      const ctxCat = document.getElementById('categoryChart').getContext('2d');
+      if (categoryChartInstance) categoryChartInstance.destroy();
+      categoryChartInstance = new Chart(ctxCat, {
+        type: 'doughnut',
+        data: {
+          labels: globalData.charts.categoryLabels,
+          datasets: [{
+            data: globalData.charts.categoryData,
+            backgroundColor: ['#1e3a8a', '#2563eb', '#60a5fa', '#bae6fd'],
+            borderWidth: 2,
+            borderColor: '#ffffff'
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          cutout: '62%',
+          plugins: {
+            legend: { position: 'bottom', labels: { font: { family: 'Prompt', size: 11 } } }
+          }
+        }
+      });
+
+      const recentContainer = document.getElementById('dashboard-recent-list');
+      const recentItems = globalData.requests.slice(0, 5);
+      if (recentItems.length === 0) {
+        recentContainer.innerHTML = '<p class="text-center text-slate-400 py-6">ยังไม่มีข้อมูลการขออนุญาต</p>';
+        return;
+      }
+
+      recentContainer.innerHTML = recentItems.map(item => `
+        <div class="py-3 flex items-center justify-between gap-2">
+          <div>
+            <p class="font-semibold text-blue-950">${item.teacherName}</p>
+            <p class="text-xs text-slate-500">${item.category} • ${item.destination} (${item.timeOut} - ${item.timeIn} น.)</p>
+          </div>
+          ${getStatusBadge(item.status)}
+        </div>
+      `).join('');
+    }
+
+    function getStatusBadge(status) {
+      if (status === 'อนุมัติแล้ว') {
+        return '<span class="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-emerald-100 text-emerald-800 whitespace-nowrap">อนุมัติแล้ว</span>';
+      }
+      if (status === 'ไม่อนุมัติ') {
+        return '<span class="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-red-100 text-red-700 whitespace-nowrap">ไม่อนุมัติ</span>';
+      }
+      return '<span class="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-amber-100 text-amber-800 whitespace-nowrap">รออนุมัติ</span>';
+    }
+
+    // เติมข้อมูลครู (ชื่อ-นามสกุล, กลุ่มสาระฯ, เบอร์โทร) ลงในแบบฟอร์มอัตโนมัติ
+    function applyTeacherProfileToForm() {
+      const savedUser = sessionStorage.getItem('tyw_teacher_user') || '';
+      const savedName = sessionStorage.getItem('tyw_teacher_name') || '';
+      const savedDept = sessionStorage.getItem('tyw_teacher_dept') || '';
+      const savedPhone = sessionStorage.getItem('tyw_teacher_phone') || '';
+
+      document.getElementById('logged-teacher-display').textContent = savedName
+        ? `${savedName} (${savedUser})`
+        : savedUser;
+
+      // 1. ชื่อ-นามสกุล
+      if (savedName) {
+        document.getElementById('teacherName').value = savedName;
+        // ใส่ชื่อในช่องค้นหาสถานะให้ด้วยเพื่อให้ตรวจสอบคำขอของตนเองได้ทันที
+        document.getElementById('teacherSearchInput').value = savedName;
+      }
+
+      // 2. ตำแหน่ง / กลุ่มสาระฯ
+      if (savedDept) {
+        const deptSelect = document.getElementById('department');
+        let matched = false;
+        for (let i = 0; i < deptSelect.options.length; i++) {
+          if (deptSelect.options[i].value === savedDept || (deptSelect.options[i].value && deptSelect.options[i].value.includes(savedDept))) {
+            deptSelect.selectedIndex = i;
+            matched = true;
+            break;
+          }
+        }
+        // กรณีในชีตระบุชื่อฝ่าย/กลุ่มสาระฯ ที่นอกเหนือจากรายการมาตรฐาน ให้เพิ่มตัวเลือกและเลือกให้อัตโนมัติ
+        if (!matched) {
+          const customOpt = document.createElement('option');
+          customOpt.value = savedDept;
+          customOpt.textContent = savedDept;
+          deptSelect.appendChild(customOpt);
+          deptSelect.value = savedDept;
+        }
+      }
+
+      // 3. เบอร์โทรศัพท์
+      if (savedPhone) {
+        document.getElementById('phone').value = savedPhone;
+      }
+    }
+
+    // ส่งแบบฟอร์มขออนุญาต
+    function handleFormSubmit(e) {
+      e.preventDefault();
+      const btn = document.getElementById('btnSubmitForm');
+      btn.disabled = true;
+      btn.textContent = 'กำลังบันทึกข้อมูล...';
+
+      const payload = {
+        teacherName: document.getElementById('teacherName').value,
+        department: document.getElementById('department').value,
+        phone: document.getElementById('phone').value,
+        category: document.getElementById('category').value,
+        destination: document.getElementById('destination').value,
+        reason: document.getElementById('reason').value,
+        requestDate: document.getElementById('requestDate').value,
+        timeOut: `${document.getElementById('outHour').value}:${document.getElementById('outMin').value}`,
+        timeIn: `${document.getElementById('inHour').value}:${document.getElementById('inMin').value}`
+      };
+
+      google.script.run
+        .withSuccessHandler(res => {
+          btn.disabled = false;
+          btn.textContent = 'ส่งคำขออนุญาตออกนอกโรงเรียน';
+          if (res.success) {
+            Swal.fire({
+              icon: 'success',
+              title: 'ส่งคำขอสำเร็จ!',
+              html: `รหัสคำขอของคุณคือ <b class="text-blue-700">${res.requestId}</b><br><span class="text-xs text-slate-500">เมื่อผู้บริหารอนุมัติ สามารถรับ QR Code ได้ที่เมนูตรวจสอบสถานะ</span>`,
+              confirmButtonColor: '#1d4ed8'
+            });
+            document.getElementById('permissionForm').reset();
+            initTimeSelectors();
+            applyTeacherProfileToForm();
+            loadData();
+            switchRequestSubTab('status');
+          } else {
+            Swal.fire('เกิดข้อผิดพลาด', res.message, 'error');
+          }
+        })
+        .withFailureHandler(err => {
+          btn.disabled = false;
+          btn.textContent = 'ส่งคำขออนุญาตออกนอกโรงเรียน';
+          Swal.fire('เกิดข้อผิดพลาด', err.message, 'error');
+        })
+        .submitPermissionRequest(payload);
+    }
+
+    // แสดงรายการตรวจสอบสถานะของครูและปุ่มเปิด QR Code
+    function renderTeacherStatusList() {
+      const keyword = (document.getElementById('teacherSearchInput').value || '').toLowerCase();
+      const list = globalData.requests.filter(r =>
+        r.teacherName.toLowerCase().includes(keyword) || r.requestId.toLowerCase().includes(keyword)
+      );
+
+      const container = document.getElementById('teacher-status-list');
+      if (list.length === 0) {
+        container.innerHTML = '<p class="text-center text-slate-400 text-sm py-6">ไม่พบรายการคำขอ</p>';
+        return;
+      }
+
+      container.innerHTML = list.map(item => `
+        <div class="p-4 rounded-2xl border border-blue-100 bg-blue-50/40 space-y-2">
+          <div class="flex items-start justify-between gap-2">
+            <div>
+              <span class="text-[11px] font-bold text-blue-700 bg-blue-100 px-2 py-0.5 rounded-md">${item.requestId}</span>
+              <h4 class="font-bold text-blue-950 text-sm mt-1">${item.teacherName}</h4>
+              <p class="text-xs text-slate-500">${item.department}</p>
+            </div>
+            ${getStatusBadge(item.status)}
+          </div>
+          <div class="text-xs text-slate-600 grid grid-cols-2 gap-1 pt-1">
+            <div>วันที่: <b>${item.requestDate}</b></div>
+            <div>เวลา: <b>${item.timeOut} - ${item.timeIn} น.</b></div>
+            <div class="col-span-2">สถานที่: ${item.destination}</div>
+          </div>
+          ${item.status === 'อนุมัติแล้ว' ? `
+            <button onclick='openQrModal(${JSON.stringify(item)})'
+              class="w-full mt-2 blue-gradient text-white text-xs font-semibold py-2.5 rounded-xl shadow">
+              แสดง QR Code สำหรับยื่นเวรยามหน้าประตู
+            </button>
+          ` : ''}
+        </div>
+      `).join('');
+    }
+
+    // เปิด Modal แสดง QR Code
+    function openQrModal(item) {
+      const qrContainer = document.getElementById('qrcodeCanvas');
+      qrContainer.innerHTML = '';
+      new QRCode(qrContainer, {
+        text: item.requestId,
+        width: 200,
+        height: 200,
+        colorDark: '#1e3a8a',
+        colorLight: '#ffffff',
+        correctLevel: QRCode.CorrectLevel.H
+      });
+
+      document.getElementById('qrModalDetails').innerHTML = `
+        <p><b>รหัสคำขอ:</b> ${item.requestId}</p>
+        <p><b>ชื่อ-สกุล:</b> ${item.teacherName}</p>
+        <p><b>วันที่ขออนุญาต:</b> ${item.requestDate}</p>
+        <p><b>ช่วงเวลาขออนุญาต:</b> ${item.timeOut} - ${item.timeIn} น.</p>
+        <p><b>สถานที่:</b> ${item.destination}</p>
+      `;
+      document.getElementById('qrModal').classList.remove('hidden');
+    }
+
+    function closeQrModal() {
+      document.getElementById('qrModal').classList.add('hidden');
+    }
+
+    // ==================== ระบบ Login ครู, ผู้บริหาร และ เวรยาม ====================
+    function checkSavedSessions() {
+      if (sessionStorage.getItem('tyw_teacher_auth') === '1') {
+        document.getElementById('teacher-login-box').classList.add('hidden');
+        document.getElementById('teacher-panel').classList.remove('hidden');
+        applyTeacherProfileToForm();
+      }
+      if (sessionStorage.getItem('tyw_admin_auth') === '1') {
+        document.getElementById('admin-login-box').classList.add('hidden');
+        document.getElementById('admin-panel').classList.remove('hidden');
+      }
+      if (sessionStorage.getItem('tyw_guard_auth') === '1') {
+        document.getElementById('guard-login-box').classList.add('hidden');
+        document.getElementById('guard-panel').classList.remove('hidden');
+      }
+    }
+
+    function handleLogin(e, role) {
+      e.preventDefault();
+      let user = '';
+      let pass = '';
+      let btnId = '';
+
+      if (role === 'teacher') {
+        user = document.getElementById('teacherUser').value;
+        pass = document.getElementById('teacherPass').value;
+        btnId = 'btnTeacherLogin';
+      } else if (role === 'admin') {
+        user = document.getElementById('adminUser').value;
+        pass = document.getElementById('adminPass').value;
+        btnId = 'btnAdminLogin';
+      } else if (role === 'guard') {
+        user = document.getElementById('guardUser').value;
+        pass = document.getElementById('guardPass').value;
+        btnId = 'btnGuardLogin';
+      }
+
+      const btn = document.getElementById(btnId);
+      const originalText = btn.textContent;
+      btn.disabled = true;
+      btn.textContent = 'กำลังตรวจสอบ...';
+
+      google.script.run
+        .withSuccessHandler(res => {
+          btn.disabled = false;
+          btn.textContent = originalText;
+
+          if (res.success) {
+            sessionStorage.setItem(`tyw_${role}_auth`, '1');
+            if (role === 'teacher') {
+              sessionStorage.setItem('tyw_teacher_user', res.username || user);
+              sessionStorage.setItem('tyw_teacher_name', res.teacherName || '');
+              sessionStorage.setItem('tyw_teacher_dept', res.department || '');
+              sessionStorage.setItem('tyw_teacher_phone', res.phone || '');
+              applyTeacherProfileToForm();
+            }
+            document.getElementById(`${role}-login-box`).classList.add('hidden');
+            document.getElementById(`${role}-panel`).classList.remove('hidden');
+            loadData();
+          } else {
+            Swal.fire('เข้าสู่ระบบไม่สำเร็จ', res.message, 'error');
+          }
+        })
+        .withFailureHandler(err => {
+          btn.disabled = false;
+          btn.textContent = originalText;
+          Swal.fire('เกิดข้อผิดพลาด', err.message, 'error');
+        })
+        .verifyLogin(role, user, pass);
+    }
+
+    function logoutRole(role) {
+      if (role === 'guard' && isScanning) stopCameraScanner();
+      sessionStorage.removeItem(`tyw_${role}_auth`);
+      if (role === 'teacher') {
+        sessionStorage.removeItem('tyw_teacher_user');
+        sessionStorage.removeItem('tyw_teacher_name');
+        sessionStorage.removeItem('tyw_teacher_dept');
+        sessionStorage.removeItem('tyw_teacher_phone');
+        document.getElementById('teacherUser').value = '';
+        document.getElementById('teacherPass').value = '';
+        document.getElementById('teacherSearchInput').value = '';
+        document.getElementById('permissionForm').reset();
+        initTimeSelectors();
+      }
+      document.getElementById(`${role}-panel`).classList.add('hidden');
+      document.getElementById(`${role}-login-box`).classList.remove('hidden');
+    }
+
+    // ==================== หน้าผู้บริหาร (อนุมัติคำขอ) ====================
+    function renderAdminList() {
+      const filter = document.getElementById('adminFilterStatus').value;
+      const list = globalData.requests.filter(r => filter === 'ทั้งหมด' || r.status === filter);
+      const container = document.getElementById('admin-request-list');
+
+      if (list.length === 0) {
+        container.innerHTML = '<div class="bg-white rounded-2xl p-8 text-center text-slate-400 text-sm card-shadow">ไม่มีรายการในหมวดหมู่นี้</div>';
+        return;
+      }
+
+      container.innerHTML = list.map(item => `
+        <div class="bg-white rounded-2xl p-4 sm:p-5 card-shadow border border-blue-100 space-y-3">
+          <div class="flex items-start justify-between gap-2">
+            <div>
+              <span class="text-xs font-bold text-blue-700">${item.requestId}</span>
+              <h3 class="font-bold text-blue-950 text-base">${item.teacherName}</h3>
+              <p class="text-xs text-slate-500">${item.department} | โทร: ${item.phone}</p>
+            </div>
+            ${getStatusBadge(item.status)}
+          </div>
+
+          <div class="bg-blue-50/70 p-3 rounded-xl text-xs text-slate-700 space-y-1">
+            <p><b>ประเภท:</b> ${item.category} | <b>วันที่:</b> ${item.requestDate} (${item.timeOut} - ${item.timeIn} น.)</p>
+            <p><b>สถานที่:</b> ${item.destination}</p>
+            <p><b>เหตุผล:</b> ${item.reason}</p>
+          </div>
+
+          ${item.status === 'รออนุมัติ' ? `
+            <div class="grid grid-cols-2 gap-2.5 pt-1">
+              <button onclick="adminApproveAction('${item.requestId}', 'อนุมัติแล้ว')"
+                class="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2.5 rounded-xl text-xs sm:text-sm shadow">
+                อนุมัติ (สร้าง QR Code)
+              </button>
+              <button onclick="adminApproveAction('${item.requestId}', 'ไม่อนุมัติ')"
+                class="bg-red-500 hover:bg-red-600 text-white font-semibold py-2.5 rounded-xl text-xs sm:text-sm shadow">
+                ไม่อนุมัติ
+              </button>
+            </div>
+          ` : `
+            <div class="flex items-center justify-between text-[11px] text-slate-400 pt-1">
+              <span>ดำเนินการเมื่อ: ${item.approvedAt}</span>
+              ${item.status === 'อนุมัติแล้ว' ? `<button onclick='openQrModal(${JSON.stringify(item)})' class="text-blue-700 font-semibold underline">ดู QR Code</button>` : ''}
+            </div>
+          `}
+        </div>
+      `).join('');
+    }
+
+    function adminApproveAction(requestId, status) {
+      Swal.fire({
+        title: `ยืนยันการ "${status}"?`,
+        text: `รหัสคำขอ: ${requestId}`,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: status === 'อนุมัติแล้ว' ? '#059669' : '#dc2626',
+        confirmButtonText: 'ยืนยัน',
+        cancelButtonText: 'ยกเลิก'
+      }).then(result => {
+        if (result.isConfirmed) {
+          google.script.run
+            .withSuccessHandler(res => {
+              if (res.success) {
+                Swal.fire('สำเร็จ', res.message, 'success');
+                loadData();
+              } else {
+                Swal.fire('ผิดพลาด', res.message, 'error');
+              }
+            })
+            .updateRequestStatus(requestId, status);
+        }
+      });
+    }
+
+    // ==================== หน้าเวรยาม (สแกนกล้องมือถือ) ====================
+    function startCameraScanner() {
+      if (isScanning) return;
+      html5QrCode = new Html5Qrcode("qr-reader");
+      document.getElementById('btnStartCam').classList.add('hidden');
+      document.getElementById('btnStopCam').classList.remove('hidden');
+
+      html5QrCode.start(
+        { facingMode: "environment" },
+        { fps: 10, qrbox: { width: 220, height: 220 } },
+        (decodedText) => {
+          stopCameraScanner();
+          handleScannedQrCode(decodedText);
+        },
+        (errorMessage) => {}
+      ).then(() => {
+        isScanning = true;
+      }).catch(err => {
+        document.getElementById('btnStartCam').classList.remove('hidden');
+        document.getElementById('btnStopCam').classList.add('hidden');
+        Swal.fire(
+          'ไม่สามารถเปิดกล้องสดได้',
+          'กรุณาอนุญาตสิทธิ์กล้อง หรือใช้ปุ่ม "ถ่ายภาพสแกน QR" ด้านล่างแทน',
+          'warning'
+        );
+      });
+    }
+
+    function stopCameraScanner() {
+      if (html5QrCode && isScanning) {
+        html5QrCode.stop().then(() => {
+          html5QrCode.clear();
+          isScanning = false;
+          document.getElementById('btnStartCam').classList.remove('hidden');
+          document.getElementById('btnStopCam').classList.add('hidden');
+        }).catch(() => {});
+      }
+    }
+
+    function scanQrFromFile(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const fileScanner = new Html5Qrcode("qr-reader");
+      fileScanner.scanFile(file, true)
+        .then(decodedText => {
+          handleScannedQrCode(decodedText);
+        })
+        .catch(err => {
+          Swal.fire('ไม่พบ QR Code ในภาพ', 'กรุณาถ่ายภาพให้เห็น QR Code ชัดเจนอีกครั้ง', 'error');
+        });
+    }
+
+    function submitManualQr() {
+      const code = document.getElementById('manualQrCode').value.trim();
+      if (!code) return;
+      handleScannedQrCode(code);
+    }
+
+    function handleScannedQrCode(code) {
+      Swal.fire({ title: 'กำลังตรวจสอบและบันทึกเวลา...', didOpen: () => Swal.showLoading() });
+
+      google.script.run
+        .withSuccessHandler(res => {
+          Swal.close();
+          if (res.success) {
+            const rec = res.record;
+            const badgeColor = res.actionType === 'OUT' ? 'bg-blue-600' : (res.actionType === 'IN' ? 'bg-emerald-600' : 'bg-slate-600');
+
+            const resultBox = document.getElementById('guard-scan-result');
+            resultBox.classList.remove('hidden');
+            resultBox.innerHTML = `
+              <div class="${badgeColor} text-white px-4 py-2 rounded-xl font-bold text-sm">
+                ${res.message}
+              </div>
+              <div class="text-xs sm:text-sm space-y-1.5 pt-2 text-slate-700">
+                <p><b>ชื่อครู:</b> ${rec.teacherName} (${rec.department})</p>
+                <p><b>วันเวลาที่ขออนุญาต:</b> ${rec.requestDate} เวลา ${rec.plannedOut} - ${rec.plannedIn} น.</p>
+                <p><b>สถานที่:</b> ${rec.destination}</p>
+                <div class="grid grid-cols-2 gap-2 pt-2">
+                  <div class="bg-blue-50 p-2.5 rounded-xl border border-blue-200">
+                    <span class="text-[11px] text-blue-600 block">เวลาออกจริง</span>
+                    <b class="text-blue-950 text-xs">${rec.actualOut}</b>
+                  </div>
+                  <div class="bg-emerald-50 p-2.5 rounded-xl border border-emerald-200">
+                    <span class="text-[11px] text-emerald-600 block">เวลากลับจริง</span>
+                    <b class="text-emerald-950 text-xs">${rec.actualIn}</b>
+                  </div>
+                </div>
+              </div>
+            `;
+
+            Swal.fire({
+              icon: 'success',
+              title: res.message,
+              text: `${rec.teacherName} (${rec.requestId})`,
+              confirmButtonColor: '#1d4ed8'
+            });
+            document.getElementById('manualQrCode').value = '';
+            loadData();
+          } else {
+            Swal.fire('แจ้งเตือน', res.message, 'error');
+          }
+        })
+        .processGuardQrScan(code);
+    }
+
+    function renderGuardLogs() {
+      const todayLogs = globalData.requests.filter(r => r.requestDate === globalData.todayStr && r.status === 'อนุมัติแล้ว');
+      const container = document.getElementById('guard-today-logs');
+
+      if (todayLogs.length === 0) {
+        container.innerHTML = '<p class="text-center text-slate-400 py-4">ยังไม่มีรายการที่ได้รับอนุมัติในวันนี้</p>';
+        return;
+      }
+
+      container.innerHTML = todayLogs.map(item => `
+        <div class="py-3 space-y-1">
+          <div class="flex justify-between items-center">
+            <span class="font-bold text-blue-950">${item.teacherName}</span>
+            <span class="text-[11px] text-blue-700 font-semibold">${item.requestId}</span>
+          </div>
+          <p class="text-xs text-slate-500">ขออนุญาต: ${item.timeOut} - ${item.timeIn} น. (${item.destination})</p>
+          <div class="flex gap-3 text-xs pt-1">
+            <span class="text-blue-700">ออกจริง: <b>${item.actualOut}</b></span>
+            <span class="text-emerald-700">กลับจริง: <b>${item.actualIn}</b></span>
+          </div>
+        </div>
+      `).join('');
+    }
+  </script>
+</body>
+</html>
